@@ -60,53 +60,58 @@ class EmailSender:
                           diary_entry: str, date: datetime) -> str:
         """Create formatted email body"""
         
+        # Prepare Gospel section (full, no truncation)
+        gospel_citation = bible_content.get('gospel_citation')
+        gospel_link = bible_content.get('gospel_link')
+        gospel_body = bible_content.get('gospel_body') or bible_content.get('Gospel', '')
+        # If combined, try to split citation line (first line before blank) – fallback safe
+        if not gospel_citation and '\n\n' in gospel_body:
+            first_part, _, rest = gospel_body.partition('\n\n')
+            if len(first_part) < 120:  # heuristic: citation is usually short
+                gospel_citation = first_part
+                gospel_body = rest
+        # HTML format Gospel body (preserve paragraphs/newlines)
+        gospel_body_html = ''.join(f'<p>{p.strip()}</p>' for p in gospel_body.split('\n\n') if p.strip()) or f'<p>{gospel_body.strip()}</p>'
+        citation_html = ''
+        if gospel_citation:
+            if gospel_link:
+                citation_html = f'<h4>{gospel_citation} <a href="{gospel_link}" target="_blank">🔗</a></h4>'
+            else:
+                citation_html = f'<h4>{gospel_citation}</h4>'
+
         html_body = f"""
         <html>
         <head>
+            <meta charset=\"utf-8\" />
             <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                .header {{ background-color: #f4f4f4; padding: 20px; text-align: center; }}
-                .content {{ padding: 20px; }}
-                .bible-reading {{ background-color: #f9f9f9; padding: 15px; margin: 15px 0; border-left: 4px solid #4CAF50; }}
-                .diary-entry {{ background-color: #fff3cd; padding: 15px; margin: 15px 0; border-radius: 5px; }}
-                .footer {{ text-align: center; color: #666; font-size: 12px; padding: 10px; }}
+                body {{ font-family: Arial, sans-serif; line-height: 1.55; color: #222; }}
+                .header {{ background:#f4f4f4; padding:20px; text-align:center; }}
+                .content {{ padding:20px; }}
+                .gospel {{ background:#f9f9f9; padding:18px 20px; border-left:4px solid #4CAF50; }}
+                .gospel h3 {{ margin-top:0; }}
+                .diary-entry {{ background:#fff8e1; padding:18px 20px; border-radius:6px; }}
+                .footer {{ text-align:center; font-size:12px; color:#666; margin-top:30px; padding:12px; }}
+                p {{ margin:0 0 12px; }}
             </style>
         </head>
         <body>
-            <div class="header">
+            <div class=\"header\">
                 <h1>🙏 Daily Bible Diary</h1>
                 <h2>{date.strftime('%A, %B %d, %Y')}</h2>
             </div>
-            
-            <div class="content">
-                <div class="bible-reading">
-                    <h3>📖 Today's Bible Readings</h3>
-        """
-        
-        # Add Bible readings
-        reading_order = ['First Reading', 'Responsorial Psalm', 'Second Reading', 'Alleluia', 'Gospel']
-        for reading_type in reading_order:
-            if reading_type in bible_content:
-                html_body += f"<h4>{reading_type}</h4><p>{bible_content[reading_type][:500]}...</p>"
-        
-        if 'content' in bible_content:
-            html_body += f"<p>{bible_content['content'][:800]}...</p>"
-        
-        # Add diary entry
-        html_body += f"""
+            <div class=\"content\">
+                <div class=\"gospel\">
+                    <h3>📖 Gospel of the Day</h3>
+                    {citation_html}
+                    {gospel_body_html}
+                    <p style=\"margin-top:10px; font-size:12px;\">Source: <a href=\"{bible_content.get('url', '#')}\" target=\"_blank\">USCCB Daily Readings</a></p>
                 </div>
-                
-                <div class="diary-entry">
+                <div class=\"diary-entry\">
                     <h3>✍️ Personal Reflection</h3>
-                    <p>{diary_entry}</p>
+                    <p>{diary_entry.replace('\n', '<br/>')}</p>
                 </div>
-                
-                <p>Source: <a href="{bible_content.get('url', '#')}">USCCB Daily Readings</a></p>
             </div>
-            
-            <div class="footer">
-                <p>Daily Bible Diary - Generated with ❤️ and AI assistance</p>
-            </div>
+            <div class=\"footer\">Daily Bible Diary - Generated with AI assistance</div>
         </body>
         </html>
         """

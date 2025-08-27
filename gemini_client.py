@@ -14,6 +14,7 @@ import google.generativeai as genai
 import logging
 from typing import Dict, Optional, List
 import os
+from datetime import datetime
 from google.generativeai.types import GenerationConfig
 
 logger = logging.getLogger(__name__)
@@ -83,13 +84,15 @@ Please write this as a personal diary entry, using a warm and reflective tone.
 """
     
     def generate_diary_entry(self, bible_content: Dict[str, str]) -> Optional[str]:
-        """Generate a diary entry based on Bible readings.
-
-        Returns generated diary entry text or None if failure.
-        """
-        # Format bible content for prompt
+        """Generate NKKT entry (Gospel only) using template placeholders {date} & {bible_content}."""
         formatted_content = self._format_bible_content(bible_content)
-        prompt = self.prompt_template.format(bible_content=formatted_content)
+        date_token = self._format_date_for_nkkt(bible_content)
+        try:
+            prompt = self.prompt_template.format(bible_content=formatted_content, date=date_token)
+        except KeyError as e:
+            # Fallback if template still old style lacking placeholders
+            logger.warning(f"Template format KeyError {e}; injecting date manually.")
+            prompt = f"NKKT:{date_token}\n\n" + formatted_content
 
         logger.info(f"Generating diary entry with Gemini AI (model={self.model_name}) ...")
 
@@ -127,7 +130,7 @@ Please write this as a personal diary entry, using a warm and reflective tone.
         logger.error("Failed to generate diary entry after retries.")
         return None
 
-    def _generate_once(self, prompt: str, gen_config: GenerationConfig) -> (Optional[str], List[int]):
+    def _generate_once(self, prompt: str, gen_config: GenerationConfig) -> tuple[Optional[str], List[int]]:
         """Single generation attempt returning (text, finish_reasons)."""
         try:
             response = self.model.generate_content([prompt], generation_config=gen_config)
@@ -181,6 +184,19 @@ Please write this as a personal diary entry, using a warm and reflective tone.
         merged = "\n".join(collected).strip()
         return (merged if merged else None), finish_reasons
 
+    def _format_date_for_nkkt(self, bible_content: Dict[str, str]) -> str:
+        """Return date in d/m/YYYY format (no leading zero) similar to sample NKKT:15/8/2025."""
+        raw = bible_content.get('date')
+        if raw:
+            for fmt in ("%A, %B %d, %Y", "%Y-%m-%d", "%d/%m/%Y"):
+                try:
+                    dt = datetime.strptime(raw, fmt)
+                    return f"{dt.day}/{dt.month}/{dt.year}"
+                except Exception:
+                    continue
+        now = datetime.now()
+        return f"{now.day}/{now.month}/{now.year}"
+
     def _shorten_prompt(self, prompt: str) -> str:
         """Heuristically shorten prompt content while keeping instructions.
 
@@ -193,28 +209,24 @@ Please write this as a personal diary entry, using a warm and reflective tone.
         return head + "\n\n[...truncated Bible text for brevity to allow full diary generation...]\n\n" + tail
     
     def _format_bible_content(self, bible_content: Dict[str, str]) -> str:
-        """Format Bible content for the AI prompt"""
-        formatted_parts = []
-        
-        # Add date
+        """Format Bible content for the AI prompt (Gospel only, compact)."""
+        parts: List[str] = []
         if 'date' in bible_content:
-            formatted_parts.append(f"Date: {bible_content['date']}")
-        
-        # Add readings in order
-        reading_order = [
-            'First Reading',
-            'Responsorial Psalm',
-            'Second Reading', 
-            'Alleluia',
-            'Gospel'
-        ]
-        
-        for reading_type in reading_order:
-            if reading_type in bible_content:
-                formatted_parts.append(f"\n{reading_type}:\n{bible_content[reading_type]}")
-        
-        # Add any other content
-        if 'content' in bible_content:
-            formatted_parts.append(f"\nAdditional Content:\n{bible_content['content']}")
-        
-        return "\n".join(formatted_parts)
+            parts.append(f"Date: {bible_content['date']}")
+
+        # Prefer structured fields
+        citation = bible_content.get('gospel_citation')
+        link = bible_content.get('gospel_link')
+        body = bible_content.get('gospel_body')
+        if citation and body:
+            line = citation
+            if link:
+                line += f" ({link})"
+            parts.append(line)
+            parts.append(body)
+        else:
+            # Fallback to combined 'Gospel' key
+            gospel_text = bible_content.get('Gospel')
+            if gospel_text:
+                parts.append(gospel_text)
+        return "\n\n".join(parts).strip()

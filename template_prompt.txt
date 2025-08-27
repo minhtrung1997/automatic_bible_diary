@@ -1,36 +1,22 @@
-Please create a thoughtful and personal Bible diary entry based on today's readings.
+Tạo mục nhật ký ngắn theo mẫu NKKT bằng tiếng Việt dựa trên đoạn Kinh Thánh cung cấp.
 
-Today's Bible Readings:
+ĐẦU RA PHẢI THEO ĐÚNG CẤU TRÚC (không thêm mục nào khác, không emoji):
+
+NKKT:{date}
+
+1. Kinh thánh nói gì  
+“<Trích 1–3 câu then chốt hoặc câu tiêu biểu nhất của đoạn Tin Mừng hôm nay>” – <Sách Chương:Câu–Câu>
+
+2. Bài học  
+2–4 câu súc tích giải thích ý chính, lẽ thật thuộc linh nổi bật và vì sao quan trọng (giọng gần gũi, dạy dỗ, không lặp lại toàn bộ nguyên văn).
+
+3. Áp dụng  
+Viết ở ngôi “tôi”: 2–3 câu hành động cụ thể (hôm nay / tuần này) + 1 câu cam kết hoặc lời cầu ngắn.
+
+DỮ LIỆU NGUỒN:
 {bible_content}
 
-Guidelines for the diary entry:
-
-🙏 **Spiritual Reflection**
-- Reflect on the key themes and messages from today's readings
-- Identify the central message God might be sharing through these scriptures
-- Consider how these readings speak to the current season of life
-
-💭 **Personal Connection**
-- Connect the biblical teachings to modern daily life experiences
-- Find practical ways to apply these teachings in everyday situations
-- Share insights about how these readings address common human struggles and joys
-
-📖 **Scripture Insights**
-- Highlight powerful verses or phrases that stand out
-- Explore the historical or cultural context if relevant
-- Consider how different readings complement each other
-
-🌟 **Practical Application**
-- Suggest specific actions or mindset changes inspired by the readings
-- Offer prayer intentions or reflection questions
-- Provide encouragement for living out these teachings
-
-✨ **Tone and Style**
-- Write in a warm, contemplative, and inspiring tone
-- Use "I" statements to make it personal and relatable
-- Keep the entry between 350-500 words
-- End with a short prayer or blessing
-
-**Goal**: Help the reader understand the deeper meaning of the scriptures, find practical ways to apply these teachings, feel encouraged and spiritually uplifted, and connect with God through reflection.
-
-Write this as a personal diary entry that feels like a conversation with a close friend who shares the same faith journey.
+Quy tắc:
+- Không thêm lời chào, tiêu đề phụ, ký hiệu trang trí.
+- Không bịa thông tin ngoài ý nghĩa hợp lý của đoạn.
+- Giữ từng mục ngắn gọn, tập trung thực hành.
