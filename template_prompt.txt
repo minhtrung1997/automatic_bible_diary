@@ -1,11 +1,10 @@
-Tạo mục nhật ký ngắn theo mẫu NKKT bằng tiếng Việt dựa trên đoạn Kinh Thánh cung cấp.
+Tạo mục nhật ký ngắn theo mẫu NKKT bằng tiếng Việt dựa trên đoạn Kinh Thánh cung cấp. Dùng và trích dẫn theo bản dịch Tin Lành VIE2010.
 
-ĐẦU RA PHẢI THEO ĐÚNG CẤU TRÚC (không thêm mục nào khác, không emoji):
+ĐẦU RA PHẢI THEO ĐÚNG CẤU TRÚC (không thêm mục nào khác, nnhưng cần emoji để sinh động):
 
-NKKT:{date}
-
+NKKT - Minh Trung:{date}
 1. Kinh thánh nói gì  
-“<Trích 1–3 câu then chốt hoặc câu tiêu biểu nhất của đoạn Tin Mừng hôm nay>” – <Sách Chương:Câu–Câu>
+“<Trích 1–3 câu then chốt hoặc câu tiêu biểu nhất của đoạn Phúc Âm hôm nay>” – <Sách Chương:Câu–Câu>
 
 2. Bài học  
 2–4 câu súc tích giải thích ý chính, lẽ thật thuộc linh nổi bật và vì sao quan trọng (giọng gần gũi, dạy dỗ, không lặp lại toàn bộ nguyên văn).
@@ -17,6 +16,6 @@ DỮ LIỆU NGUỒN:
 {bible_content}
 
 Quy tắc:
-- Không thêm lời chào, tiêu đề phụ, ký hiệu trang trí.
+- Không thêm lời chào, tiêu đề phụ, nhưng nên có ký hiệu trang trí.
 - Không bịa thông tin ngoài ý nghĩa hợp lý của đoạn.
 - Giữ từng mục ngắn gọn, tập trung thực hành.
