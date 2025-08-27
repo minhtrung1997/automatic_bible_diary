@@ -1,261 +1,195 @@
-# 📖 Daily Bible Diary Automation
+# 📖 Daily Bible Diary (Gospel + NKKT Reflection)
 
-Automatically fetches daily Bible readings from USCCB, generates personalized diary entries using Google Gemini AI, and delivers them via email every day at 6 AM Vietnam time.
+Tự động lấy Tin Mừng hằng ngày (Gospel only) từ USCCB, tạo ghi chú thiêng liêng theo format NKKT (3 mục: Kinh thánh nói gì / Bài học / Áp dụng) bằng Google Gemini, rồi gửi email vào 06:00 (Việt Nam) mỗi ngày.
 
-## ✨ Features
+## ✨ Features (Hiện tại)
 
-- 🌅 **Daily Automation**: Runs every day at 6 AM GMT+7 using GitHub Actions
-- 📖 **Bible Reading Fetcher**: Scrapes daily readings from USCCB website
-- 🤖 **AI-Powered Diary**: Uses Google Gemini to generate thoughtful reflections
-- 📧 **Multi-Provider Email**: Supports Gmail, SendGrid, and Amazon SES
-- 🔒 **Secure**: All credentials stored as GitHub Secrets
-- 🛠️ **Customizable**: Easy to modify prompts and templates
+- 🌅 **Daily Automation**: 06:00 Asia/Ho_Chi_Minh (cron 23:00 UTC ngày trước)
+- 📖 **Gospel-Only Scraper**: Lấy đúng phần Tin Mừng (citation + link + full body) tối ưu token
+- 🧩 **Structured Fields**: `gospel_citation`, `gospel_link`, `gospel_body` + combined `Gospel`
+- 🤖 **Gemini Integration**: Model cấu hình qua `GEMINI_MODEL` (mặc định `gemini-1.5-flash`), retry khi MAX_TOKENS
+- 📝 **NKKT Prompt Template**: `template_prompt.txt` (tiếng Việt, placeholder `{date}` & `{bible_content}`)
+- 🔁 **Resilient Generation**: Token budget env override `GEMINI_MAX_OUTPUT_TOKENS`; rút gọn prompt khi bị cắt
+- 📧 **Multi-Provider Email**: Gmail, SendGrid, Amazon SES; HTML + plain text fallback (nếu sử dụng bản đầy đủ EmailSender)
+- 🛡️ **Safe Config**: Secrets không commit; lỗi sẽ tạo GitHub Issue (nếu bật bước notify)
+- 🐞 **Debug Mode**: Thêm log chi tiết với `DEBUG=true`
 
-## 🚀 Quick Setup
+## 🗂️ Tech Overview
 
-### 1. Repository Setup
+| Layer                                     | Purpose                                           |
+| ----------------------------------------- | ------------------------------------------------- |
+| `bible_fetcher.py`                        | Gọi USCCB -> parse chỉ Gospel                     |
+| `gemini_client.py`                        | Format NKKT prompt -> gọi Gemini -> retry khi cần |
+| `email_sender.py`                         | Render email (Gospel + NKKT) & gửi qua provider   |
+| `template_prompt.txt`                     | NKKT template tiếng Việt chuẩn nhóm               |
+| `.github/workflows/daily-bible-diary.yml` | Lên lịch & chạy hằng ngày                         |
 
-1. Create this repository: `minhtrung1997/automatic_bible_diary`
-2. Add all the provided files to your repository
-3. Commit and push the changes
+## ⚙️ Environment / Secrets
 
-### 2. Get Required API Keys
-
-#### Google Gemini API Key
-
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key
-3. Copy the key for later use
-
-#### Email Service Setup (Choose One)
-
-**Option A: Gmail (Recommended for personal use)**
-
-1. Enable 2-Factor Authentication on your Google account
-2. Generate an App Password:
-   - Go to Google Account settings
-   - Security → 2-Step Verification → App passwords
-   - Generate password for "Mail"
-3. Use your Gmail address and the app password
-
-**Option B: SendGrid**
-
-1. Sign up at [SendGrid](https://sendgrid.com)
-2. Create an API key in Settings → API Keys
-3. Verify your sender email address
-
-**Option C: Amazon SES**
-
-1. Set up AWS account and SES service
-2. Verify your email addresses
-3. Get AWS Access Key and Secret Key
-
-### 3. Configure GitHub Secrets
-
-Go to your repository → Settings → Secrets and variables → Actions
-
-**Required Secrets:**
+Required GitHub **Secrets** (Settings → Actions → Secrets → New repository secret):
 
 ```
-GEMINI_API_KEY=your_gemini_api_key_here
-EMAIL_FROM=your-email@gmail.com
-EMAIL_TO=recipient@gmail.com
-EMAIL_PASSWORD=your_app_password_or_api_key
+GEMINI_API_KEY=xxxxxxxxxxxxxxxx
+EMAIL_FROM=your_email@example.com
+EMAIL_TO=recipient@example.com            # có thể giống EMAIL_FROM
+EMAIL_PASSWORD=app_password_or_api_key    # Gmail App Password / SendGrid API Key / trống nếu SES dùng access keys
 ```
 
-**For SendGrid (additional):**
+If using **SendGrid**:
 
 ```
 EMAIL_PROVIDER=sendgrid
 ```
 
-**For Amazon SES (additional):**
+If using **Amazon SES**:
 
 ```
 EMAIL_PROVIDER=ses
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_ACCESS_KEY_ID=xxxx
+AWS_SECRET_ACCESS_KEY=xxxx
 ```
 
-### 4. Repository Variables (Optional)
-
-In Repository → Settings → Secrets and variables → Actions → Variables tab:
+Optional **Variables** (Settings → Actions → Variables):
 
 ```
-EMAIL_PROVIDER=gmail  # or sendgrid, ses
-```
-
-## 📅 How It Works
-
-1. **6:00 AM Vietnam Time**: GitHub Actions triggers the workflow
-2. **Bible Fetching**: Script accesses USCCB website for today's readings
-3. **AI Processing**: Gemini generates a personalized diary entry
-4. **Email Delivery**: Formatted email sent to your inbox
-5. **Error Handling**: Creates GitHub issue if anything fails
-
-## 🔧 Customization
-
-### Modify the AI Prompt
-
-Edit `template_prompt.txt` to customize how Gemini generates your diary entries:
-
-```text
-Your custom prompt here...
-Use {bible_content} where you want the readings inserted...
-```
-
-### Change Email Template
-
-Modify the `_create_email_body()` method in `email_sender.py` to customize the email format.
-
-### Adjust Schedule
-
-Edit `.github/workflows/daily-bible-diary.yml` to change the execution time:
-
-```yaml
-schedule:
-  # Daily at 7 AM Vietnam time (12 AM UTC)
-  - cron: "0 0 * * *"
-```
-
-## 🧪 Testing
-
-### Test Locally
-
-1. Create `.env` file with your secrets:
-
-```bash
-GEMINI_API_KEY=your_key
-EMAIL_FROM=your_email
-EMAIL_TO=recipient_email
-EMAIL_PASSWORD=your_password
 EMAIL_PROVIDER=gmail
-```
-
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Run the script:
-
-```bash
-python main.py
-```
-
-### Test via GitHub Actions
-
-1. Go to Actions tab in your repository
-2. Find "Daily Bible Diary" workflow
-3. Click "Run workflow" to test manually
-
-## 📊 Monitoring
-
-### Check Logs
-
-- Go to Actions → Daily Bible Diary → Latest run
-- View logs for debugging information
-
-### Failure Notifications
-
-- Failed runs automatically create GitHub issues
-- Check Issues tab for error notifications
-
-## 🛡️ Security Best Practices
-
-- ✅ All credentials stored as GitHub Secrets
-- ✅ No sensitive data in source code
-- ✅ API keys properly secured
-- ✅ Input validation for web scraping
-- ✅ Error handling throughout
-
-## 📝 File Structure
-
-```
-automatic_bible_diary/
-├── main.py                          # Main orchestration script
-├── bible_fetcher.py                 # USCCB website scraper
-├── gemini_client.py                 # Gemini AI integration
-├── email_sender.py                  # Multi-provider email sender
-├── config.py                        # Configuration management
-├── template_prompt.txt              # AI prompt template (customizable)
-├── requirements.txt                 # Python dependencies
-├── .github/workflows/
-│   └── daily-bible-diary.yml       # GitHub Actions workflow
-└── README.md                        # This file
-```
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**1. Workflow Not Running**
-
-- Check if GitHub Actions are enabled for your repository
-- Verify the cron schedule format
-- Ensure the repository is not private (or you have GitHub Pro)
-
-**2. Bible Fetching Fails**
-
-- USCCB website might be down or changed structure
-- Check logs for specific parsing errors
-- Script has fallback mechanisms for content extraction
-
-**3. Gemini API Errors**
-
-- Verify API key is correct and active
-- Check quota limits on your Gemini account
-- Review prompt length (should be under token limits)
-
-**4. Email Sending Fails**
-
-- Verify email credentials and provider settings
-- Check spam folder for delivered emails
-- For Gmail, ensure App Password is used (not account password)
-
-### Debug Mode
-
-Add this secret to enable detailed logging:
-
-```
+GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MAX_OUTPUT_TOKENS=800
 DEBUG=true
 ```
 
-## 📞 Support
+Local `.env` (không commit):
 
-### Need Help?
+```
+GEMINI_API_KEY=...
+EMAIL_FROM=...
+EMAIL_TO=...
+EMAIL_PASSWORD=...
+EMAIL_PROVIDER=gmail
+GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MAX_OUTPUT_TOKENS=800
+DEBUG=true
+```
 
-1. Check the [Issues](../../issues) tab for similar problems
-2. Create a new issue with:
-   - Error logs from GitHub Actions
-   - Configuration details (without secrets!)
-   - Expected vs actual behavior
+## 🧠 NKKT Prompt Template
 
-### Feature Requests
+File `template_prompt.txt` (rút gọn, tiếng Việt) chứa placeholders:
 
-Open an issue with the "enhancement" label to request new features.
+```
+NKKT:{date}
 
-## 🤝 Contributing
+1. Kinh thánh nói gì
+... (Gemini sẽ chèn trích câu) ...
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Bài học
+...
 
-## 📄 License
+3. Áp dụng
+...
 
-This project is open source. Feel free to modify and distribute according to your needs.
+DỮ LIỆU NGUỒN:
+{bible_content}
+```
 
-## 🙏 Acknowledgments
+GeminiClient sẽ thay `{date}` dạng `d/m/YYYY` & `{bible_content}` = Gospel (citation + body). Giữ prompt ngắn → ít rủi ro MAX_TOKENS.
 
-- **USCCB** for providing daily Bible readings
-- **Google Gemini** for AI-powered reflections
-- **GitHub Actions** for reliable automation
-- **Beautiful Soup** for web scraping capabilities
+## 🚀 Run Locally
 
----
+```bash
+pip install -r requirements.txt
+python main.py
+```
 
-**Enjoy your daily spiritual journey! 🌟**
+Nếu cần đổi model nhanh:
+
+```bash
+export GEMINI_MODEL=gemini-1.5-pro
+python main.py
+```
+
+Tăng giới hạn token:
+
+```bash
+export GEMINI_MAX_OUTPUT_TOKENS=1200
+python main.py
+```
+
+## ⏱️ Schedule (GitHub Actions)
+
+Workflow cron: `0 23 * * *` (UTC) → 06:00 GMT+7 ngày kế tiếp tại VN.
+
+Chạy thủ công: Actions tab → chọn workflow → Run workflow.
+
+## 📤 Email Rendering
+
+Email gồm:
+
+1. Header (date)
+2. Gospel section (citation + link + full text, paragraph hóa)
+3. NKKT Reflection (giữ line breaks)
+4. Footer
+
+Muốn đổi giao diện: sửa `_create_email_body` trong `email_sender.py`.
+
+## 🛡️ Error Handling
+
+- Thiếu `GEMINI_API_KEY` → raise ngay trong `Config`
+- Model 404 hoặc MAX_TOKENS → log + retry với nhiều token hơn + prompt rút gọn
+- Không tìm được Gospel → log error & dừng
+- Email fail → log provider-specific error
+
+## 🔍 Troubleshooting (Cập nhật)
+
+| Issue                        | Nguyên nhân                                    | Cách xử lý                                          |
+| ---------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| KeyError 'date'              | Template có `{date}` nhưng prompt không truyền | Đã fix: luôn format date trước generation           |
+| Model 404                    | `GEMINI_MODEL` cũ (vd gemini-pro)              | Dùng `gemini-1.5-flash` hoặc list models qua API    |
+| MAX_TOKENS (finish_reason=2) | Output vượt giới hạn                           | Tăng `GEMINI_MAX_OUTPUT_TOKENS` hoặc rút gọn prompt |
+| Email trắng / thiếu Gospel   | Parse USCCB thay đổi                           | Kiểm tra CSS selectors trong `bible_fetcher.py`     |
+| Gmail auth fail              | Dùng mật khẩu thường                           | Tạo App Password (2FA)                              |
+
+Kiểm tra log chi tiết: set `DEBUG=true`.
+
+## 🧪 Simple Validation Idea
+
+Bạn có thể thêm bước regex kiểm NKKT trước gửi:
+
+```
+^NKKT:\d{1,2}/\d{1,2}/\d{4}\n\n1\. Kinh thánh nói gì\n[\s\S]+?2\. Bài học\n[\s\S]+?3\. Áp dụng\n
+```
+
+(Chưa bật mặc định để giảm độ phức tạp.)
+
+## � File Structure (Tóm tắt)
+
+```
+automatic_bible_diary/
+├── main.py
+├── bible_fetcher.py          # Gospel-only scraper
+├── gemini_client.py          # Gemini NKKT generator (configurable model)
+├── email_sender.py           # Email sender (HTML + providers)
+├── config.py                 # Env config validation
+├── template_prompt.txt       # NKKT prompt template (VN)
+├── requirements.txt          # Dependencies
+└── .github/workflows/daily-bible-diary.yml
+```
+
+## 🔒 Security Notes
+
+- Không commit secrets / .env
+- Giới hạn quyền workflow: chỉ cần `contents: read`
+- Thay đổi model qua variable thay vì sửa code
+
+## ➕ Planned Enhancements (Ideas)
+
+- Regex validator cho output NKKT
+- Artifact lưu email HTML mỗi ngày
+- Multi-language mode (VN + EN song song)
+- Cảnh báo khi USCCB thay đổi DOM (hash diff)
+
+## 🙏 Credits
+
+USCCB · Google Gemini · BeautifulSoup · GitHub Actions
+
+Chúc bạn hành trình suy niệm lời Chúa được sâu sắc mỗi ngày! 🌟
