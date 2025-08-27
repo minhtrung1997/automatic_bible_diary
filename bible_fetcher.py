@@ -56,13 +56,7 @@ class BibleFetcher:
                 content_sections = soup.find_all('div', class_='content-body')
             
             # Extract different reading types
-            reading_types = [
-                'First Reading',
-                'Responsorial Psalm', 
-                'Second Reading',
-                'Gospel',
-                'Alleluia'
-            ]
+            reading_types = ['Gospel']
             
             # Parse readings
             for section in content_sections:
