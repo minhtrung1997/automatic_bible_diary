@@ -8,9 +8,9 @@ import smtplib
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Dict, Optional
+from typing import Dict
 from datetime import datetime
-import requests
+from string import Template
 
 logger = logging.getLogger(__name__)
 
@@ -56,66 +56,77 @@ class EmailSender:
             logger.error(f"Error sending email: {str(e)}")
             return False
     
-    def _create_email_body(self, bible_content: Dict[str, str], 
-                          diary_entry: str, date: datetime) -> str:
-        """Create formatted email body"""
-        
-        # Prepare Gospel section (full, no truncation)
+    def _create_email_body(self, bible_content: Dict[str, str],
+                           diary_entry: str, date: datetime) -> str:
+        """Create formatted email body (Gospel only, no truncation, Template-based)"""
         gospel_citation = bible_content.get('gospel_citation')
         gospel_link = bible_content.get('gospel_link')
         gospel_body = bible_content.get('gospel_body') or bible_content.get('Gospel', '')
-        # If combined, try to split citation line (first line before blank) – fallback safe
+
         if not gospel_citation and '\n\n' in gospel_body:
             first_part, _, rest = gospel_body.partition('\n\n')
-            if len(first_part) < 120:  # heuristic: citation is usually short
+            if len(first_part) < 120:
                 gospel_citation = first_part
                 gospel_body = rest
-        # HTML format Gospel body (preserve paragraphs/newlines)
-        gospel_body_html = ''.join(f'<p>{p.strip()}</p>' for p in gospel_body.split('\n\n') if p.strip()) or f'<p>{gospel_body.strip()}</p>'
-        citation_html = ''
+
+        gospel_body_html = ''.join(
+            f'<p>{p.strip()}</p>' for p in gospel_body.split('\n\n') if p.strip()
+        ) or f'<p>{gospel_body.strip()}</p>'
+
         if gospel_citation:
             if gospel_link:
                 citation_html = f'<h4>{gospel_citation} <a href="{gospel_link}" target="_blank">🔗</a></h4>'
             else:
                 citation_html = f'<h4>{gospel_citation}</h4>'
+        else:
+            citation_html = ''
 
-        html_body = f"""
-        <html>
-        <head>
-            <meta charset=\"utf-8\" />
-            <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.55; color: #222; }}
-                .header {{ background:#f4f4f4; padding:20px; text-align:center; }}
-                .content {{ padding:20px; }}
-                .gospel {{ background:#f9f9f9; padding:18px 20px; border-left:4px solid #4CAF50; }}
-                .gospel h3 {{ margin-top:0; }}
-                .diary-entry {{ background:#fff8e1; padding:18px 20px; border-radius:6px; }}
-                .footer {{ text-align:center; font-size:12px; color:#666; margin-top:30px; padding:12px; }}
-                p {{ margin:0 0 12px; }}
-            </style>
-        </head>
-        <body>
-            <div class=\"header\">
-                <h1>🙏 Daily Bible Diary</h1>
-                <h2>{date.strftime('%A, %B %d, %Y')}</h2>
-            </div>
-            <div class=\"content\">
-                <div class=\"gospel\">
-                    <h3>📖 Gospel of the Day</h3>
-                    {citation_html}
-                    {gospel_body_html}
-                    <p style=\"margin-top:10px; font-size:12px;\">Source: <a href=\"{bible_content.get('url', '#')}\" target=\"_blank\">USCCB Daily Readings</a></p>
-                </div>
-                <div class=\"diary-entry\">
-                    <h3>✍️ Personal Reflection</h3>
-                    <p>{diary_entry.replace('\n', '<br/>')}</p>
-                </div>
-            </div>
-            <div class=\"footer\">Daily Bible Diary - Generated with AI assistance</div>
-        </body>
-        </html>
-        """
-        
+        template = Template("""<html>
+<head>
+<meta charset="utf-8" />
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.55; color: #222; }
+.header { background:#f4f4f4; padding:20px; text-align:center; }
+.content { padding:20px; }
+.gospel { background:#f9f9f9; padding:18px 20px; border-left:4px solid #4CAF50; }
+.gospel h3 { margin-top:0; }
+.diary-entry { background:#fff8e1; padding:18px 20px; border-radius:6px; }
+.footer { text-align:center; font-size:12px; color:#666; margin-top:30px; padding:12px; }
+p { margin:0 0 12px; }
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>🙏 Daily Bible Diary</h1>
+    <h2>$DATE</h2>
+</div>
+<div class="content">
+    <div class="gospel">
+        <h3>📖 Gospel of the Day</h3>
+        $CITATION_HTML
+        $GOSPEL_BODY_HTML
+        <p style="margin-top:10px; font-size:12px;">Source:
+            <a href="$SOURCE_URL" target="_blank">USCCB Daily Readings</a>
+        </p>
+    </div>
+    <div class="diary-entry">
+        <h3>✍️ Personal Reflection</h3>
+        <p>$DIARY_ENTRY_HTML</p>
+    </div>
+</div>
+<div class="footer">Daily Bible Diary - Generated with AI assistance</div>
+</body>
+</html>
+""")
+
+        diary_entry_html = "<br/>".join(line for line in diary_entry.strip().splitlines())
+        html_body = template.substitute(
+            DATE=date.strftime('%A, %B %d, %Y'),
+            CITATION_HTML=citation_html,
+            GOSPEL_BODY_HTML=gospel_body_html,
+            SOURCE_URL=bible_content.get('url', '#'),
+            DIARY_ENTRY_HTML=diary_entry_html
+        )
         return html_body
     
     def _send_via_gmail(self, subject: str, body: str) -> bool:
