@@ -40,7 +40,7 @@ jobs:
       - name: Generate and send daily Bible diary
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-1.5-flash' }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
           GEMINI_MAX_OUTPUT_TOKENS: 800
           EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER || 'gmail' }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
