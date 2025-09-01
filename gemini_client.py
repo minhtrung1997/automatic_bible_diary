@@ -16,10 +16,12 @@ from typing import Dict, Optional, List
 import os
 from datetime import datetime
 from google.generativeai.types import GenerationConfig
+from bible_database import BibleDatabase
+from bible_reference_parser import BibleReferenceParser
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-1.5-flash"
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 
 class GeminiClient:
@@ -44,6 +46,16 @@ class GeminiClient:
 
         # Load prompt template
         self.prompt_template = self._load_prompt_template()
+        
+        # Initialize Bible database and reference parser
+        try:
+            self.bible_db = BibleDatabase()
+            self.reference_parser = BibleReferenceParser()
+            logger.info("Bible database initialized successfully")
+        except Exception as e:
+            logger.warning(f"Could not initialize Bible database: {e}")
+            self.bible_db = None
+            self.reference_parser = None
         
     def _load_prompt_template(self) -> str:
         """Load prompt template from file"""
@@ -80,6 +92,8 @@ The diary entry should help the reader:
 - Feel encouraged and spiritually uplifted
 - Connect with God through reflection
 
+IMPORTANT: When Vietnamese verses (Tiếng Việt) are provided, please reference and reflect on the exact Vietnamese translation rather than paraphrasing or translating back to English. This helps maintain accuracy with the Revised Vietnamese Version (RVV) Bible text.
+
 Please write this as a personal diary entry, using a warm and reflective tone.
 """
     
@@ -99,9 +113,9 @@ Please write this as a personal diary entry, using a warm and reflective tone.
         # Determine max tokens (env override)
         max_tokens_env = os.getenv("GEMINI_MAX_OUTPUT_TOKENS")
         try:
-            max_tokens_cfg = int(max_tokens_env) if max_tokens_env else 1100
+            max_tokens_cfg = int(max_tokens_env) if max_tokens_env else 8000
         except ValueError:
-            max_tokens_cfg = 1100
+            max_tokens_cfg = 8000
         logger.debug(f"Prompt chars={len(prompt)} max_output_tokens={max_tokens_cfg}")
 
         # First attempt
@@ -113,7 +127,7 @@ Please write this as a personal diary entry, using a warm and reflective tone.
         # Retry if empty or truncated (finish_reason=2)
         if any(fr == 2 for fr in finish_reasons) or text is None:
             logger.info("Retrying generation with higher token limit and lower temperature ...")
-            retry_cfg = GenerationConfig(temperature=0.6, max_output_tokens=min(max_tokens_cfg * 2, 3000))
+            retry_cfg = GenerationConfig(temperature=0.6, max_output_tokens=min(max_tokens_cfg * 2, 64000))
             text, finish_reasons2 = self._generate_once(prompt, retry_cfg)
             if text:
                 return text
@@ -122,7 +136,7 @@ Please write this as a personal diary entry, using a warm and reflective tone.
             if any(fr == 2 for fr in finish_reasons2):
                 shortened_prompt = self._shorten_prompt(prompt)
                 logger.info("Third attempt with shortened prompt to fit token budget ...")
-                retry_cfg2 = GenerationConfig(temperature=0.65, max_output_tokens=min(max_tokens_cfg * 2, 3000))
+                retry_cfg2 = GenerationConfig(temperature=0.65, max_output_tokens=min(max_tokens_cfg * 2, 64000))
                 text, _ = self._generate_once(shortened_prompt, retry_cfg2)
                 if text:
                     return text
@@ -208,25 +222,97 @@ Please write this as a personal diary entry, using a warm and reflective tone.
         tail = prompt[-800:]
         return head + "\n\n[...truncated Bible text for brevity to allow full diary generation...]\n\n" + tail
     
+    def _enrich_with_vietnamese_verses(self, bible_content: Dict[str, str]) -> Dict[str, str]:
+        """Enrich Bible content with Vietnamese verses from RVV.SQLite3 database."""
+        if not self.bible_db or not self.reference_parser:
+            return bible_content
+        
+        enriched_content = bible_content.copy()
+        
+        try:
+            # Extract Gospel reference from the content
+            gospel_text = bible_content.get('Gospel', '') or bible_content.get('gospel_citation', '')
+            
+            if gospel_text:
+                # Parse the reference 
+                references = self.reference_parser.extract_bible_references(gospel_text)
+                
+                if references:
+                    ref = references[0]  # Take the first/main reference
+                    
+                    # Get Vietnamese verse text
+                    vietnamese_verse = self.bible_db.search_verse_by_reference(
+                        ref['book'], 
+                        ref['chapter'], 
+                        ref['verse_start'], 
+                        ref['verse_end']
+                    )
+                    
+                    if vietnamese_verse:
+                        # Add Vietnamese verse to content
+                        enriched_content['vietnamese_gospel'] = vietnamese_verse
+                        enriched_content['gospel_reference'] = f"{ref['book']} {ref['chapter']}:{ref['verse_start']}"
+                        if ref['verse_end']:
+                            enriched_content['gospel_reference'] += f"-{ref['verse_end']}"
+                        
+                        logger.info(f"Added Vietnamese verse for {enriched_content['gospel_reference']}")
+                    else:
+                        logger.warning(f"Could not find Vietnamese verse for {ref}")
+                else:
+                    logger.warning("No Bible references found in Gospel text")
+            
+        except Exception as e:
+            logger.error(f"Error enriching with Vietnamese verses: {e}")
+        
+        return enriched_content
+    
     def _format_bible_content(self, bible_content: Dict[str, str]) -> str:
-        """Format Bible content for the AI prompt (Gospel only, compact)."""
+        """Format Bible content for the AI prompt (Gospel only, with Vietnamese verses)."""
+        # First enrich with Vietnamese verses
+        enriched_content = self._enrich_with_vietnamese_verses(bible_content)
+        
         parts: List[str] = []
-        if 'date' in bible_content:
-            parts.append(f"Date: {bible_content['date']}")
+        if 'date' in enriched_content:
+            parts.append(f"Date: {enriched_content['date']}")
 
         # Prefer structured fields
-        citation = bible_content.get('gospel_citation')
-        link = bible_content.get('gospel_link')
-        body = bible_content.get('gospel_body')
+        citation = enriched_content.get('gospel_citation')
+        link = enriched_content.get('gospel_link')
+        body = enriched_content.get('gospel_body')
+        vietnamese_gospel = enriched_content.get('vietnamese_gospel')
+        gospel_reference = enriched_content.get('gospel_reference')
+        
         if citation and body:
             line = citation
             if link:
                 line += f" ({link})"
             parts.append(line)
             parts.append(body)
+            
+            # Add Vietnamese verse if available
+            if vietnamese_gospel and gospel_reference:
+                parts.append(f"\nTiếng Việt ({gospel_reference}):")
+                parts.append(vietnamese_gospel)
         else:
             # Fallback to combined 'Gospel' key
-            gospel_text = bible_content.get('Gospel')
+            gospel_text = enriched_content.get('Gospel')
             if gospel_text:
                 parts.append(gospel_text)
+                
+                # Add Vietnamese verse if available
+                if vietnamese_gospel and gospel_reference:
+                    parts.append(f"\nTiếng Việt ({gospel_reference}):")
+                    parts.append(vietnamese_gospel)
+        
         return "\n\n".join(parts).strip()
+    
+    def close(self):
+        """Close database connections"""
+        if self.bible_db:
+            self.bible_db.close()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

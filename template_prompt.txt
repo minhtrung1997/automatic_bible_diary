@@ -1,4 +1,5 @@
-Tạo mục nhật ký ngắn theo mẫu NKKT bằng tiếng Việt dựa trên đoạn Kinh Thánh cung cấp. Dùng và trích dẫn theo bản dịch Tin Lành VIE2010.
+Tạo mục nhật ký ngắn theo mẫu NKKT bằng tiếng Việt dựa trên đoạn Kinh Thánh cung cấp. Dùng và trích dẫn theo Kinh Thánh Tiếng Việt Bản Truyền Thống Hiệu Đính 2010
+.
 
 ĐẦU RA PHẢI THEO ĐÚNG CẤU TRÚC (không thêm mục nào khác, nnhưng cần emoji để sinh động):
 
@@ -10,12 +11,13 @@ NKKT - Minh Trung:{date}
 2–4 câu súc tích giải thích ý chính, lẽ thật thuộc linh nổi bật và vì sao quan trọng (giọng gần gũi, dạy dỗ, không lặp lại toàn bộ nguyên văn).
 
 3. Áp dụng  
-Viết ở ngôi “tôi”: 2–3 câu hành động cụ thể (hôm nay / tuần này) + 1 câu cam kết hoặc lời cầu ngắn.
+Viết ở ngôi “tôi”: 2–3 câu hành động cụ thể (hôm nay / tuần này) + 1 câu cam kết hoặc lời cầu ngắn. Những hành động, cam kết cần phù hợp với bối cảnh công sở và người đi làm
 
 DỮ LIỆU NGUỒN:
 {bible_content}
 
 Quy tắc:
+- Phải dùng đúng Kinh Thánh Tiếng Việt Bản Truyền Thống Hiệu Đính 2010, không dùng bản dịch khác hay chế lời dựa trên lời tiếng Anh
 - Không thêm lời chào, tiêu đề phụ, nhưng nên có ký hiệu trang trí.
 - Không bịa thông tin ngoài ý nghĩa hợp lý của đoạn.
 - Giữ từng mục ngắn gọn, tập trung thực hành.
