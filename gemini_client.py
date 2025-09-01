@@ -4,7 +4,7 @@ Gemini API Client Module
 Integrates with Google Gemini AI for generating Bible diary entries.
 
 Improvements:
-- Configurable model via GEMINI_MODEL env var or constructor arg (default gemini-1.5-flash)
+- Configurable model via GEMINI_MODEL env var or constructor arg (default gemini-2.5-flash)
 - Robust parsing of response candidates/parts (avoids response.text accessor crash)
 - Logs finish_reason & safety blocks for diagnostics
 - Retry logic if first attempt yields no text or is MAX_TOKENS truncated
@@ -30,7 +30,7 @@ class GeminiClient:
 
         Args:
             api_key: Google Gemini API key
-            model: Optional model name override (e.g. "gemini-1.5-pro")
+            model: Optional model name override (e.g. "gemini-2.5-pro")
         """
         self.api_key = api_key
         genai.configure(api_key=api_key)
