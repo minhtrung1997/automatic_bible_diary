@@ -5,6 +5,14 @@ on:
     # 06:00 GMT+7 = 23:00 UTC previous day
     - cron: "0 23 * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "main.py"
+      - "diary/**"
+      - "common/**"
+      - "requirements.txt"
+      - ".github/workflows/daily-bible-diary.yml"
 
 concurrency:
   group: daily-bible-diary

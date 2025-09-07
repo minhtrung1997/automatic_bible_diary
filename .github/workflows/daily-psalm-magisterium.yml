@@ -5,6 +5,14 @@ on:
     # 03:00 GMT+7 = 20:00 UTC previous day
     - cron: "0 20 * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "main_magisterium.py"
+      - "magisterium/**"
+      - "common/**"
+      - "requirements.txt"
+      - ".github/workflows/daily-psalm-magisterium.yml"
 
 concurrency:
   group: daily-psalm-magisterium
