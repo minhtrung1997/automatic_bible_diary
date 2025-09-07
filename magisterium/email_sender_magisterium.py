@@ -18,10 +18,11 @@ class EmailSenderMagisterium:
         self.provider = config.email_provider.lower()
 
     def send_psalm_reflection(self, content: Dict[str, str], reflection: str, date: datetime,
-                              subject: Optional[str] = None, section_title: str = 'Responsorial Psalm') -> bool:
+                              subject: Optional[str] = None, section_title: str = 'Responsorial Psalm',
+                              vietnamese_text: Optional[str] = None) -> bool:
         try:
             subject = subject or f"Daily Psalm Reflection - {date.strftime('%B %d, %Y')}"
-            body = self._create_email_body(content, reflection, date, section_title)
+            body = self._create_email_body(content, reflection, date, section_title, vietnamese_text)
             if self.provider == 'gmail':
                 return self._send_via_gmail(subject, body)
             if self.provider == 'sendgrid':
@@ -34,19 +35,26 @@ class EmailSenderMagisterium:
             logger.error(f"Error sending email: {e}")
             return False
 
-    def _create_email_body(self, content: Dict[str, str], reflection: str, date: datetime, section_title: str) -> str:
-        citation = content.get('gospel_citation') or content.get('psalm_citation')
-        link = content.get('gospel_link') or content.get('psalm_link')
-        body_txt = content.get('gospel_body') or content.get('psalm_body') or ''
+    def _create_email_body(self, content: Dict[str, str], reflection: str, date: datetime, 
+                          section_title: str, vietnamese_text: Optional[str] = None) -> str:
+        # Keep the source link and citation, but content follows mg_prompt structure
+        citation = content.get('psalm_citation') or content.get('gospel_citation')
+        link = content.get('psalm_link') or content.get('gospel_link')
+        body_txt = content.get('psalm_body') or content.get('gospel_body') or ''
         if not citation and '\n\n' in body_txt:
             first, _, rest = body_txt.partition('\n\n')
             if len(first) < 120:
                 citation = first
                 body_txt = rest
-        body_html = ''.join(f'<p>{p.strip()}</p>' for p in body_txt.split('\n\n') if p.strip()) or f'<p>{body_txt.strip()}</p>'
+        body_html = ''.join(
+            f'<p>{p.strip()}</p>' for p in body_txt.split('\n\n') if p.strip()
+        ) or (f'<p>{body_txt.strip()}</p>' if body_txt.strip() else '')
         citation_html = ''
         if citation:
-            citation_html = f'<h4>{citation} ' + (f'<a href="{link}" target="_blank">🔗</a>' if link else '') + '</h4>'
+            citation_html = (
+                f'<h4>{citation} ' + (f'<a href="{link}" target="_blank">🔗</a>' if link else '') + '</h4>'
+            )
+
         template = Template("""<html>
 <head>
 <meta charset="utf-8" />
@@ -70,28 +78,72 @@ p { margin:0 0 12px; }
     <div class="gospel">
         <h3>📖 $SECTION_TITLE</h3>
         $CITATION_HTML
-        $BODY_HTML
+                    <h4>Thánh vịnh hôm nay</h4>
+                    $BODY_HTML
         <p style="margin-top:10px; font-size:12px;">Source:
             <a href="$SOURCE_URL" target="_blank">USCCB Daily Readings</a>
         </p>
-    </div>
-    <div class="diary-entry">
-        <h3>✍️ Reflection</h3>
-        <p>$REFLECTION_HTML</p>
-    </div>
+        </div>
+        <div class="diary-entry">
+            <h3>📖 Kinh thánh:</h3>
+            <p>$VIETNAMESE_HTML</p>
+            <h3 style="margin-top:18px;">✍️ Suy niệm</h3>
+            <p>$MEDITATION_HTML</p>
+            <h3 style="margin-top:18px;">🙏 Cầu nguyện</h3>
+            <p>$PRAYER_HTML</p>
+        </div>
 </div>
 <div class="footer">Automated Psalm Reflection - Generated with AI assistance</div>
 </body>
 </html>
 """)
-        reflection_html = "<br/>".join(line for line in reflection.strip().splitlines())
+        # Try to split the reflection into sections per mg_prompt structure
+        text = reflection.strip()
+        
+        # Clean up footnote references like [^9], [^14], etc.
+        import re
+        text = re.sub(r'\[\^\d+\]', '', text)
+        
+        # Clean up markdown-style headers like #### or ###
+        text = re.sub(r'^#{1,6}\s*', '', text, flags=re.MULTILINE)
+        
+        med = text
+        prayer = ''
+        # Simple split on section headers
+        if 'Cầu nguyện' in text:
+            parts = text.split('Cầu nguyện', 1)
+            med = parts[0].replace('Suy niệm', '').replace('Suy niệm:', '').strip()
+            prayer = parts[1].replace(':', '', 1).strip()
+        
+        # Clean up any remaining colons at the start
+        if med.startswith(':'):
+            med = med[1:].strip()
+        if prayer.startswith(':'):
+            prayer = prayer[1:].strip()
+            
+        MEDITATION_HTML = "<br/>".join(med.splitlines())
+        PRAYER_HTML = "<br/>".join(prayer.splitlines())
+        
+        # Format Vietnamese text for HTML
+        if vietnamese_text:
+            # Split by double newlines and create paragraphs for each verse section
+            vietnamese_sections = vietnamese_text.strip().split('\n\n')
+            VIETNAMESE_HTML = "<br/><br/>".join(
+                "<br/>".join(section.strip().splitlines()) 
+                for section in vietnamese_sections if section.strip()
+            )
+        else:
+            VIETNAMESE_HTML = "<em>Không tìm thấy bản dịch LCCMN</em>"
+        
         html_body = template.substitute(
             DATE=date.strftime('%A, %B %d, %Y'),
             SECTION_TITLE=section_title,
             CITATION_HTML=citation_html,
             BODY_HTML=body_html,
             SOURCE_URL=content.get('url', '#'),
-            REFLECTION_HTML=reflection_html,
+            VIETNAMESE_HTML=VIETNAMESE_HTML,
+            MEDITATION_HTML=MEDITATION_HTML,
+            PRAYER_HTML=PRAYER_HTML,
         )
         return html_body
 
