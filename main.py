@@ -10,10 +10,10 @@ import logging
 from datetime import datetime
 import pytz
 
-from bible_fetcher import BibleFetcher
-from gemini_client import GeminiClient  
-from email_sender import EmailSender
-from config import Config
+from diary.bible_fetcher import BibleFetcher
+from diary.gemini_client import GeminiClient
+from diary.email_sender import EmailSender
+from diary.config import Config
 
 # Setup logging
 logging.basicConfig(

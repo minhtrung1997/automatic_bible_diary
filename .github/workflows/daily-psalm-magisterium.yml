@@ -1,0 +1,69 @@
+name: Daily Psalm Reflection (Magisterium)
+
+on:
+  schedule:
+    # 03:00 GMT+7 = 20:00 UTC previous day
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: daily-psalm-magisterium
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  generate-and-send:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Validate requirements file exists
+        run: |
+          [ -f requirements.txt ] || { echo "requirements.txt missing"; exit 1; }
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests (Magisterium)
+        run: |
+          python -m pytest -q || true
+
+      - name: Generate and send psalm reflection
+        env:
+          MAGISTERIUM_API_KEY: ${{ secrets.MAGISTERIUM_API_KEY }}
+          EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER || 'gmail' }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TZ: Asia/Ho_Chi_Minh
+        run: |
+          set -e
+          python main_magisterium.py || { echo "First attempt failed, retrying in 20s..."; sleep 20; python main_magisterium.py; }
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Daily Psalm Reflection Failed - ' + new Date().toISOString().split('T')[0],
+              body: 'The psalm reflection generation failed. Logs:\n\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            })

@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Email Sender Module
-Supports multiple email providers for sending daily Bible diary
-"""
+"""Email sender for the diary (Gospel) workflow."""
 
 import smtplib
 import logging
@@ -14,73 +11,46 @@ from string import Template
 
 logger = logging.getLogger(__name__)
 
+
 class EmailSender:
     def __init__(self, config):
-        """
-        Initialize email sender with configuration
-        
-        Args:
-            config: Configuration object containing email settings
-        """
         self.config = config
         self.provider = config.email_provider.lower()
-        
-    def send_daily_diary(self, bible_content: Dict[str, str], 
-                        diary_entry: str, date: datetime) -> bool:
-        """
-        Send daily Bible diary via email
-        
-        Args:
-            bible_content: Dictionary containing Bible readings
-            diary_entry: Generated diary entry
-            date: Date for the diary entry
-            
-        Returns:
-            True if sent successfully, False otherwise
-        """
+
+    def send_daily_diary(self, bible_content: Dict[str, str], diary_entry: str, date: datetime) -> bool:
         try:
             subject = f"Daily Bible Diary - {date.strftime('%B %d, %Y')}"
             body = self._create_email_body(bible_content, diary_entry, date)
-            
             if self.provider == 'gmail':
                 return self._send_via_gmail(subject, body)
-            elif self.provider == 'sendgrid':
+            if self.provider == 'sendgrid':
                 return self._send_via_sendgrid(subject, body)
-            elif self.provider == 'ses':
+            if self.provider == 'ses':
                 return self._send_via_ses(subject, body)
-            else:
-                logger.error(f"Unsupported email provider: {self.provider}")
-                return False
-                
+            logger.error(f"Unsupported email provider: {self.provider}")
+            return False
         except Exception as e:
             logger.error(f"Error sending email: {str(e)}")
             return False
-    
-    def _create_email_body(self, bible_content: Dict[str, str],
-                           diary_entry: str, date: datetime) -> str:
-        """Create formatted email body (Gospel only, no truncation, Template-based)"""
+
+    def _create_email_body(self, bible_content: Dict[str, str], diary_entry: str, date: datetime) -> str:
         gospel_citation = bible_content.get('gospel_citation')
         gospel_link = bible_content.get('gospel_link')
         gospel_body = bible_content.get('gospel_body') or bible_content.get('Gospel', '')
-
         if not gospel_citation and '\n\n' in gospel_body:
             first_part, _, rest = gospel_body.partition('\n\n')
             if len(first_part) < 120:
                 gospel_citation = first_part
                 gospel_body = rest
-
         gospel_body_html = ''.join(
             f'<p>{p.strip()}</p>' for p in gospel_body.split('\n\n') if p.strip()
         ) or f'<p>{gospel_body.strip()}</p>'
-
+        citation_html = ''
         if gospel_citation:
             if gospel_link:
                 citation_html = f'<h4>{gospel_citation} <a href="{gospel_link}" target="_blank">🔗</a></h4>'
             else:
                 citation_html = f'<h4>{gospel_citation}</h4>'
-        else:
-            citation_html = ''
-
         template = Template("""<html>
 <head>
 <meta charset="utf-8" />
@@ -118,97 +88,70 @@ p { margin:0 0 12px; }
 </body>
 </html>
 """)
-
         diary_entry_html = "<br/>".join(line for line in diary_entry.strip().splitlines())
         html_body = template.substitute(
             DATE=date.strftime('%A, %B %d, %Y'),
             CITATION_HTML=citation_html,
             GOSPEL_BODY_HTML=gospel_body_html,
             SOURCE_URL=bible_content.get('url', '#'),
-            DIARY_ENTRY_HTML=diary_entry_html
+            DIARY_ENTRY_HTML=diary_entry_html,
         )
         return html_body
-    
+
     def _send_via_gmail(self, subject: str, body: str) -> bool:
-        """Send email via Gmail SMTP"""
         try:
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject
             msg['From'] = self.config.email_from
             msg['To'] = self.config.email_to
-            
-            # Add HTML body
-            html_part = MIMEText(body, 'html')
-            msg.attach(html_part)
-            
-            # Connect to Gmail SMTP
+            msg.attach(MIMEText(body, 'html'))
             server = smtplib.SMTP('smtp.gmail.com', 587)
             server.starttls()
             server.login(self.config.email_from, self.config.email_password)
-            
-            # Send email
             server.send_message(msg)
             server.quit()
-            
             logger.info("Email sent successfully via Gmail")
             return True
-            
         except Exception as e:
             logger.error(f"Gmail SMTP error: {str(e)}")
             return False
-    
+
     def _send_via_sendgrid(self, subject: str, body: str) -> bool:
-        """Send email via SendGrid API"""
         try:
             import sendgrid
             from sendgrid.helpers.mail import Mail
-            
             sg = sendgrid.SendGridAPIClient(api_key=self.config.email_password)
-            
-            message = Mail(
+            response = sg.send(Mail(
                 from_email=self.config.email_from,
                 to_emails=self.config.email_to,
                 subject=subject,
-                html_content=body
-            )
-            
-            response = sg.send(message)
-            
+                html_content=body,
+            ))
             if response.status_code in [200, 201, 202]:
                 logger.info("Email sent successfully via SendGrid")
                 return True
-            else:
-                logger.error(f"SendGrid error: {response.status_code}")
-                return False
-                
+            logger.error(f"SendGrid error: {response.status_code}")
+            return False
         except Exception as e:
             logger.error(f"SendGrid error: {str(e)}")
             return False
-    
+
     def _send_via_ses(self, subject: str, body: str) -> bool:
-        """Send email via Amazon SES"""
         try:
             import boto3
-            
             ses_client = boto3.client(
                 'ses',
                 region_name=self.config.aws_region,
                 aws_access_key_id=self.config.aws_access_key,
-                aws_secret_access_key=self.config.aws_secret_key
+                aws_secret_access_key=self.config.aws_secret_key,
             )
-            
-            response = ses_client.send_email(
+            ses_client.send_email(
                 Source=self.config.email_from,
                 Destination={'ToAddresses': [self.config.email_to]},
-                Message={
-                    'Subject': {'Data': subject, 'Charset': 'UTF-8'},
-                    'Body': {'Html': {'Data': body, 'Charset': 'UTF-8'}}
-                }
+                Message={'Subject': {'Data': subject, 'Charset': 'UTF-8'}, 'Body': {'Html': {'Data': body, 'Charset': 'UTF-8'}}},
             )
-            
             logger.info("Email sent successfully via Amazon SES")
             return True
-            
         except Exception as e:
             logger.error(f"Amazon SES error: {str(e)}")
             return False

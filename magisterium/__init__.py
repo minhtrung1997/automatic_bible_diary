@@ -1,0 +1,1 @@
+"""Magisterium (Psalm) workflow package."""
