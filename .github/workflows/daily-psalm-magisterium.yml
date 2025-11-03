@@ -5,6 +5,15 @@ on:
     # 03:00 GMT+7 = 20:00 UTC previous day
    # - cron: "0 20 * * *"
   workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
   push:
     branches: [main]
     paths:
