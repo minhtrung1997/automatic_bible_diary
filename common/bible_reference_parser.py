@@ -14,58 +14,92 @@ logger = logging.getLogger(__name__)
 class BibleReferenceParser:
     def __init__(self):
         """Initialize the Bible reference parser."""
-        # Common book name mappings (English to Vietnamese)
+        # Common book name mappings (English to Vietnamese short names)
+        # Using short names from database for reliable matching
         self.book_mappings = {
-            # Old Testament
-            'genesis': 'Khởi Nguyên',
-            'gen': 'Kn',
-            'exodus': 'Xuất Hành',
-            'exod': 'Xh',
-            'leviticus': 'Lê Vi',
-            'lev': 'Lv',
-            'numbers': 'Dân Số',
-            'num': 'Ds',
-            'deuteronomy': 'Thứ Luật',
-            'deut': 'Tl',
-            'psalms': 'Thánh Vịnh',
-            'psalm': 'Thánh Vịnh',
-            'ps': 'Tv',
+            # Old Testament - Pentateuch
+            'genesis': 'Kn', 'gen': 'Kn',
+            'exodus': 'Xh', 'exod': 'Xh', 'ex': 'Xh',
+            'leviticus': 'Lv', 'lev': 'Lv',
+            'numbers': 'Ds', 'num': 'Ds', 'nm': 'Ds',
+            'deuteronomy': 'Tl', 'deut': 'Tl', 'dt': 'Tl',
             
-            # Major Prophets
-            'isaiah': 'Isaya', 'isa': 'Is',
-            'jeremiah': 'Tiên Tri Yêrêmya', 'jer': 'Gr',
-            'lamentations': 'Ai Ca', 'lam': 'Ac',
-            'ezekiel': 'Tiên Tri Êzêkiel', 'ezek': 'Êz',
-            'daniel': 'Tiên Tri Ðaniel', 'dan': 'Ðn',
+            # Old Testament - Historical Books
+            'joshua': 'Yôs', 'josh': 'Yôs', 'jos': 'Yôs',
+            'judges': 'Tp', 'judg': 'Tp', 'jdg': 'Tp',
+            'ruth': 'R', 'ru': 'R', 'rut': 'R',
+            '1 samuel': '1Sm', '1 sam': '1Sm', '1sam': '1Sm', '1sm': '1Sm',
+            '2 samuel': '2Sm', '2 sam': '2Sm', '2sam': '2Sm', '2sm': '2Sm',
+            '1 kings': '1V', '1 kgs': '1V', '1kgs': '1V', '1ki': '1V',
+            '2 kings': '2V', '2 kgs': '2V', '2kgs': '2V', '2ki': '2V',
+            '1 chronicles': '1Sb', '1 chr': '1Sb', '1chr': '1Sb', '1ch': '1Sb',
+            '2 chronicles': '2Sb', '2 chr': '2Sb', '2chr': '2Sb', '2ch': '2Sb',
+            'ezra': 'Ezr', 'ezr': 'Ezr',
+            'nehemiah': 'Nkm', 'neh': 'Nkm', 'ne': 'Nkm',
+            'esther': 'Est', 'est': 'Est', 'esth': 'Est',
+            
+            # Old Testament - Wisdom Books
+            'job': 'Yob', 'jb': 'Yob',
+            'psalms': 'Tv', 'psalm': 'Tv', 'ps': 'Tv', 'pss': 'Tv',
+            'proverbs': 'Cn', 'prov': 'Cn', 'pr': 'Cn',
+            'ecclesiastes': 'Gv', 'eccl': 'Gv', 'ecc': 'Gv', 'eccles': 'Gv',
+            'song of solomon': 'Hc', 'song of songs': 'Hc', 'song': 'Hc', 'sos': 'Hc', 'ss': 'Hc',
+            
+            # Old Testament - Major Prophets
+            'isaiah': 'Is', 'isa': 'Is', 'is': 'Is',
+            'jeremiah': 'Gr', 'jer': 'Gr', 'je': 'Gr',
+            'lamentations': 'Ac', 'lam': 'Ac', 'la': 'Ac',
+            'ezekiel': 'Êz', 'ezek': 'Êz', 'eze': 'Êz',
+            'daniel': 'Ðn', 'dan': 'Ðn', 'da': 'Ðn',
+            
+            # Old Testament - Minor Prophets
+            'hosea': 'Hs', 'hos': 'Hs',
+            'joel': 'Ge', 'joe': 'Ge', 'jl': 'Ge',
+            'amos': 'Am', 'am': 'Am',
+            'obadiah': 'Ôv', 'obad': 'Ôv', 'ob': 'Ôv',
+            'jonah': 'Gn', 'jon': 'Gn', 'jnh': 'Gn',
+            'micah': 'Mc', 'mic': 'Mc', 'mi': 'Mc',
+            'nahum': 'Nk', 'nah': 'Nk', 'na': 'Nk',
+            'habakkuk': 'Kb', 'hab': 'Kb', 'hb': 'Kb',
+            'zephaniah': 'Xp', 'zeph': 'Xp', 'zep': 'Xp',
+            'haggai': 'Hag', 'hag': 'Hag', 'hg': 'Hag',
+            'zechariah': 'Dcr', 'zech': 'Dcr', 'zec': 'Dcr',
+            'malachi': 'Ml', 'mal': 'Ml',
 
-            # New Testament (common mappings)
-            'matthew': 'Mátthêu', 'matt': 'Mt', 'mt': 'Mt',
-            'mark': 'Máccô', 'mk': 'Mk',
-            'luke': 'Luca', 'lk': 'Lc',
-            'john': 'Gioan', 'jn': 'Ga',
-            'acts': 'Công vụ Tông đồ',
-            'romans': 'Thư Rôma', 'rom': 'Rm',
-            '1 corinthians': 'Thư 1 Côrintô', '1 cor': '1Cr',
-            '2 corinthians': 'Thư 2 Côrintô', '2 cor': '2Cr',
-            'galatians': 'Thư Galát', 'gal': 'Gl',
-            'ephesians': 'Thư Êphêsô', 'eph': 'Ep',
-            'philippians': 'Thư Philípphê', 'phil': 'Pl',
-            'colossians': 'Thư Côlôxê', 'col': 'Cl',
-            '1 thessalonians': 'Thư 1 Thêxalônica', '1 thess': '1Tx',
-            '2 thessalonians': 'Thư 2 Thêxalônica', '2 thess': '2Tx',
-            '1 timothy': 'Thư 1 Timôthê', '1 tim': '1Tm',
-            '2 timothy': 'Thư 2 Timôthê', '2 tim': '2Tm',
-            'titus': 'Thư Titô', 'tt': 'Tt',
-            'philemon': 'Thư Philêmon', 'phlm': 'Plm',
-            'hebrews': 'Thư Do Thái', 'heb': 'Dt',
-            'james': 'Thư Giacôbê', 'jas': 'Gc',
-            '1 peter': 'Thư 1 Phêrô', '1 pet': '1Pr',
-            '2 peter': 'Thư 2 Phêrô', '2 pet': '2Pr',
-            '1 john': 'Thư 1 Gioan', '1 jn': '1Ga',
-            '2 john': 'Thư 2 Gioan', '2 jn': '2Ga',
-            '3 john': 'Thư 3 Gioan', '3 jn': '3Ga',
-            'jude': 'Thư Giuđa',
-            'revelation': 'Khải Huyền', 'rev': 'Kh'
+            # New Testament - Gospels and Acts
+            'matthew': 'Mt', 'matt': 'Mt', 'mt': 'Mt',
+            'mark': 'Mk', 'mk': 'Mk', 'mr': 'Mk',
+            'luke': 'Lc', 'lk': 'Lc', 'lu': 'Lc',
+            'john': 'Ga', 'jn': 'Ga', 'joh': 'Ga',
+            'acts': 'Cv', 'act': 'Cv', 'ac': 'Cv',
+            
+            # New Testament - Pauline Epistles
+            'romans': 'Rm', 'rom': 'Rm', 'ro': 'Rm',
+            '1 corinthians': '1Cr', '1 cor': '1Cr', '1cor': '1Cr', '1co': '1Cr',
+            '2 corinthians': '2Cr', '2 cor': '2Cr', '2cor': '2Cr', '2co': '2Cr',
+            'galatians': 'Gl', 'gal': 'Gl', 'ga': 'Gl',
+            'ephesians': 'Ep', 'eph': 'Ep',
+            'philippians': 'Pl', 'phil': 'Pl', 'php': 'Pl',
+            'colossians': 'Cl', 'col': 'Cl',
+            '1 thessalonians': '1Tx', '1 thess': '1Tx', '1thess': '1Tx', '1th': '1Tx',
+            '2 thessalonians': '2Tx', '2 thess': '2Tx', '2thess': '2Tx', '2th': '2Tx',
+            '1 timothy': '1Tm', '1 tim': '1Tm', '1tim': '1Tm', '1ti': '1Tm',
+            '2 timothy': '2Tm', '2 tim': '2Tm', '2tim': '2Tm', '2ti': '2Tm',
+            'titus': 'Tt', 'tit': 'Tt', 'tt': 'Tt',
+            'philemon': 'Plm', 'phlm': 'Plm', 'phm': 'Plm',
+            
+            # New Testament - General Epistles
+            'hebrews': 'Dt', 'heb': 'Dt',
+            'james': 'Gc', 'jas': 'Gc', 'jam': 'Gc',
+            '1 peter': '1Pr', '1 pet': '1Pr', '1pet': '1Pr', '1pe': '1Pr',
+            '2 peter': '2Pr', '2 pet': '2Pr', '2pet': '2Pr', '2pe': '2Pr',
+            '1 john': '1Ga', '1 jn': '1Ga', '1jn': '1Ga', '1jo': '1Ga',
+            '2 john': '2Ga', '2 jn': '2Ga', '2jn': '2Ga', '2jo': '2Ga',
+            '3 john': '3Ga', '3 jn': '3Ga', '3jn': '3Ga', '3jo': '3Ga',
+            'jude': 'Gđ', 'jud': 'Gđ',
+            
+            # New Testament - Apocalyptic
+            'revelation': 'Kh', 'rev': 'Kh', 're': 'Kh',
         }
 
     def extract_bible_references(self, text: str) -> List[Dict[str, object]]:
