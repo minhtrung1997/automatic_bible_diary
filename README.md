@@ -6,6 +6,7 @@ Tự động lấy Tin Mừng hằng ngày (Gospel only) từ USCCB, tạo ghi c
 
 - 🌅 **Daily Automation**: 06:00 Asia/Ho_Chi_Minh (cron 23:00 UTC ngày trước)
 - 📖 **Gospel-Only Scraper**: Lấy đúng phần Tin Mừng (citation + link + full body) tối ưu token
+- 📝 **Custom Verses Support**: Sử dụng câu Kinh thánh tùy chỉnh (vd: "Jeremiah 29:11") thay vì bài đọc hằng ngày
 - 🧩 **Structured Fields**: `gospel_citation`, `gospel_link`, `gospel_body` + combined `Gospel`
 - 🤖 **Gemini Integration**: Model cấu hình qua `GEMINI_MODEL` (mặc định `gemini-1.5-flash`), retry khi MAX_TOKENS
 - 📝 **NKKT Prompt Template**: `template_prompt.txt` (tiếng Việt, placeholder `{date}` & `{bible_content}`)
@@ -56,6 +57,7 @@ Optional **Variables** (Settings → Actions → Variables):
 EMAIL_PROVIDER=gmail
 GEMINI_MODEL=gemini-1.5-flash
 GEMINI_MAX_OUTPUT_TOKENS=800
+CUSTOM_VERSES=Jeremiah 29:11    # Tùy chọn: Sử dụng câu Kinh thánh tùy chỉnh thay vì bài đọc hằng ngày
 DEBUG=true
 ```
 
@@ -69,6 +71,7 @@ EMAIL_PASSWORD=...
 EMAIL_PROVIDER=gmail
 GEMINI_MODEL=gemini-1.5-flash
 GEMINI_MAX_OUTPUT_TOKENS=800
+CUSTOM_VERSES=Jeremiah 29:11    # Tùy chọn: Sử dụng câu Kinh thánh tùy chỉnh
 DEBUG=true
 ```
 
@@ -114,6 +117,40 @@ Tăng giới hạn token:
 export GEMINI_MAX_OUTPUT_TOKENS=1200
 python main.py
 ```
+
+## 📖 Custom Verses Feature
+
+Bạn có thể sử dụng câu Kinh thánh tùy chỉnh thay vì bài đọc hằng ngày bằng cách thiết lập biến `CUSTOM_VERSES`.
+
+### Cách sử dụng:
+
+1. **Trên GitHub Actions**: 
+   - Vào Settings → Actions → Variables
+   - Tạo variable mới tên `CUSTOM_VERSES` với giá trị là địa chỉ câu Kinh thánh (vd: `Jeremiah 29:11`)
+   - Workflow sẽ tự động sử dụng câu này thay vì bài đọc hằng ngày
+
+2. **Chạy thủ công với `workflow_dispatch`**:
+   - Thiết lập `CUSTOM_VERSES` trong Variables
+   - Vào Actions tab → chọn workflow → Run workflow
+   - Email sẽ được gửi với câu Kinh thánh tùy chỉnh
+
+3. **Chạy local**:
+   ```bash
+   export CUSTOM_VERSES="Jeremiah 29:11"
+   python main.py
+   ```
+
+### Định dạng hỗ trợ:
+
+- Câu đơn: `John 3:16`
+- Phạm vi câu: `Psalm 23:1-3` hoặc `Matthew 5:3-10`
+- Các sách được hỗ trợ: Genesis, Exodus, Psalms, Isaiah, Jeremiah, Ezekiel, Daniel, Matthew, Mark, Luke, John, Romans, và nhiều sách khác
+
+### Lưu ý:
+
+- Nếu `CUSTOM_VERSES` không được thiết lập hoặc để trống, hệ thống sẽ tự động lấy bài đọc Tin Mừng hằng ngày từ USCCB
+- Câu Kinh thánh tùy chỉnh được lấy từ cơ sở dữ liệu Kinh thánh tiếng Việt (RVV.SQLite3)
+- Bạn có thể thay đổi `CUSTOM_VERSES` bất cứ lúc nào để sử dụng câu khác
 
 ## ⏱️ Schedule (GitHub Actions)
 
