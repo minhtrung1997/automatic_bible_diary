@@ -33,8 +33,9 @@ def main():
         
         # Check if custom verses are provided
         custom_verses = os.getenv('CUSTOM_VERSES')
+        has_custom_verses = custom_verses and custom_verses.strip()
         
-        if custom_verses and custom_verses.strip():
+        if has_custom_verses:
             logger.info(f"Using custom verse: {custom_verses}")
             logger.info(f"Starting Bible diary generation with custom verse for {current_date.strftime('%Y-%m-%d')}")
         else:
@@ -43,7 +44,7 @@ def main():
         # Fetch Bible reading (daily or custom)
         bible_fetcher = BibleFetcher()
         
-        if custom_verses and custom_verses.strip():
+        if has_custom_verses:
             # Fetch custom verse
             bible_content = bible_fetcher.fetch_custom_verse(custom_verses.strip(), current_date)
         else:
