@@ -4,12 +4,7 @@ Test script for book name mapping functionality
 Ensures all 66 books of the Bible can be resolved from English names to Vietnamese
 """
 
-import os
-import sys
-
-# Add the project root to sys.path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import pytest
 from common.bible_reference_parser import BibleReferenceParser
 from common.bible_database import BibleDatabase
 
@@ -17,24 +12,21 @@ from common.bible_database import BibleDatabase
 def test_nehemiah_mapping():
     """Test that nehemiah is correctly mapped (the original issue)"""
     parser = BibleReferenceParser()
-    db = BibleDatabase()
     
-    refs = parser.extract_bible_references('nehemiah 2:1')
-    assert refs, "Failed to parse nehemiah 2:1"
-    
-    ref = refs[0]
-    assert ref['book'] == 'Nkm', f"Expected 'Nkm', got '{ref['book']}'"
-    
-    verse_text = db.search_verse_by_reference(ref['book'], ref['chapter'], ref['verse_start'], ref['verse_end'])
-    assert verse_text, "Failed to find verse in database"
-    
-    db.close()
+    with BibleDatabase() as db:
+        refs = parser.extract_bible_references('nehemiah 2:1')
+        assert refs, "Failed to parse nehemiah 2:1"
+        
+        ref = refs[0]
+        assert ref['book'] == 'Nkm', f"Expected 'Nkm', got '{ref['book']}'"
+        
+        verse_text = db.search_verse_by_reference(ref['book'], ref['chapter'], ref['verse_start'], ref['verse_end'])
+        assert verse_text, "Failed to find verse in database"
 
 
 def test_old_testament_books():
     """Test mapping of Old Testament books"""
     parser = BibleReferenceParser()
-    db = BibleDatabase()
     
     # Using short names that match the database
     test_cases = [
@@ -77,23 +69,21 @@ def test_old_testament_books():
         ('malachi 3:10', 'Ml'),
     ]
     
-    for reference, expected_book in test_cases:
-        refs = parser.extract_bible_references(reference)
-        assert refs, f"Failed to parse {reference}"
-        
-        ref = refs[0]
-        assert ref['book'] == expected_book, f"For {reference}: expected '{expected_book}', got '{ref['book']}'"
-        
-        verse_text = db.search_verse_by_reference(ref['book'], ref['chapter'], ref['verse_start'], ref['verse_end'])
-        assert verse_text, f"Failed to find verse in database for {reference}"
-    
-    db.close()
+    with BibleDatabase() as db:
+        for reference, expected_book in test_cases:
+            refs = parser.extract_bible_references(reference)
+            assert refs, f"Failed to parse {reference}"
+            
+            ref = refs[0]
+            assert ref['book'] == expected_book, f"For {reference}: expected '{expected_book}', got '{ref['book']}'"
+            
+            verse_text = db.search_verse_by_reference(ref['book'], ref['chapter'], ref['verse_start'], ref['verse_end'])
+            assert verse_text, f"Failed to find verse in database for {reference}"
 
 
 def test_new_testament_books():
     """Test mapping of New Testament books"""
     parser = BibleReferenceParser()
-    db = BibleDatabase()
     
     # Using short names that match the database
     test_cases = [
@@ -126,17 +116,16 @@ def test_new_testament_books():
         ('revelation 21:4', 'Kh'),
     ]
     
-    for reference, expected_book in test_cases:
-        refs = parser.extract_bible_references(reference)
-        assert refs, f"Failed to parse {reference}"
-        
-        ref = refs[0]
-        assert ref['book'] == expected_book, f"For {reference}: expected '{expected_book}', got '{ref['book']}'"
-        
-        verse_text = db.search_verse_by_reference(ref['book'], ref['chapter'], ref['verse_start'], ref['verse_end'])
-        assert verse_text, f"Failed to find verse in database for {reference}"
-    
-    db.close()
+    with BibleDatabase() as db:
+        for reference, expected_book in test_cases:
+            refs = parser.extract_bible_references(reference)
+            assert refs, f"Failed to parse {reference}"
+            
+            ref = refs[0]
+            assert ref['book'] == expected_book, f"For {reference}: expected '{expected_book}', got '{ref['book']}'"
+            
+            verse_text = db.search_verse_by_reference(ref['book'], ref['chapter'], ref['verse_start'], ref['verse_end'])
+            assert verse_text, f"Failed to find verse in database for {reference}"
 
 
 def test_abbreviated_book_names():
