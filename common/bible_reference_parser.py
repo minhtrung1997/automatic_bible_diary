@@ -30,13 +30,6 @@ class BibleReferenceParser:
             'psalms': 'Thánh Vịnh',
             'psalm': 'Thánh Vịnh',
             'ps': 'Tv',
-            
-            # Major Prophets
-            'isaiah': 'Isaya', 'isa': 'Is',
-            'jeremiah': 'Tiên Tri Yêrêmya', 'jer': 'Gr',
-            'lamentations': 'Ai Ca', 'lam': 'Ac',
-            'ezekiel': 'Tiên Tri Êzêkiel', 'ezek': 'Êz',
-            'daniel': 'Tiên Tri Ðaniel', 'dan': 'Ðn',
 
             # New Testament (common mappings)
             'matthew': 'Mátthêu', 'matt': 'Mt', 'mt': 'Mt',

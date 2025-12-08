@@ -31,28 +31,11 @@ def main():
         vn_tz = pytz.timezone('Asia/Ho_Chi_Minh')
         current_date = datetime.now(vn_tz)
         
-        # Check if custom verses are provided
-        custom_verses = os.getenv('CUSTOM_VERSES')
-        has_custom_verses = custom_verses and custom_verses.strip()
+        logger.info(f"Starting daily Bible diary generation for {current_date.strftime('%Y-%m-%d')}")
         
-        if has_custom_verses:
-            logger.info(f"Using custom verse: {custom_verses}")
-            logger.info(f"Starting Bible diary generation with custom verse for {current_date.strftime('%Y-%m-%d')}")
-        else:
-            logger.info(f"Starting daily Bible diary generation for {current_date.strftime('%Y-%m-%d')}")
-        
-        # Fetch Bible reading (daily or custom)
+        # Fetch daily Bible reading
         bible_fetcher = BibleFetcher()
-        
-        if has_custom_verses:
-            # Fetch custom verse
-            bible_content = bible_fetcher.fetch_custom_verse(custom_verses.strip(), current_date)
-        else:
-            # Fetch daily reading from USCCB
-            bible_content = bible_fetcher.fetch_daily_reading(current_date)
-        
-        # Close the fetcher to release database connection
-        bible_fetcher.close()
+        bible_content = bible_fetcher.fetch_daily_reading(current_date)
         
         if not bible_content:
             logger.error("Failed to fetch Bible content")
