@@ -10,6 +10,8 @@ import os
 from typing import Dict, List, Optional
 import re
 
+from common.book_mappings import BOOK_MAPPINGS
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,23 +56,26 @@ class BibleDatabase:
 
     def get_book_number(self, book_name: str) -> Optional[int]:
         try:
-            aliases = {
-                'ps': 'Tv', 'psalm': 'Thánh Vịnh', 'psalms': 'Thánh Vịnh',
-                'genesis': 'Khởi Nguyên', 'gen': 'Kn',
-                'exodus': 'Xuất Hành', 'exod': 'Xh',
-                'leviticus': 'Lê Vi', 'lev': 'Lv',
-                'numbers': 'Dân Số', 'num': 'Ds',
-                'deuteronomy': 'Thứ Luật', 'deut': 'Tl',
-            }
             bn = book_name.strip()
-            mapped = aliases.get(bn.lower())
+            # Use shared book mappings
+            mapped = BOOK_MAPPINGS.get(bn.lower())
             if mapped:
                 book_name = mapped
 
             cur = self._connection.cursor()
+            # First try exact match on short_name (case-sensitive, works with Unicode)
             cur.execute(
-                "SELECT book_number FROM books WHERE LOWER(short_name) LIKE ? OR LOWER(long_name) LIKE ?",
-                (f"%{book_name.lower()}%", f"%{book_name.lower()}%"),
+                "SELECT book_number FROM books WHERE short_name = ?",
+                (book_name,),
+            )
+            row = cur.fetchone()
+            if row:
+                return row[0]
+            
+            # Fall back to LIKE matching on long_name for Vietnamese book names
+            cur.execute(
+                "SELECT book_number FROM books WHERE long_name LIKE ?",
+                (f"%{book_name}%",),
             )
             row = cur.fetchone()
             return row[0] if row else None
