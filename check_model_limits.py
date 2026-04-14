@@ -37,10 +37,15 @@ def check_model_limits():
 
 def test_generation_config():
     """Test different generation configurations to understand limits"""
-    config = Config()
-    genai.configure(api_key=config.gemini_api_key)
+    def _get_api_key() -> str:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is required")
+        return api_key
     
-    model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    genai.configure(api_key=_get_api_key())
+    
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
     print(f"\n=== Testing Generation Config for {model_name} ===")
     
     try:

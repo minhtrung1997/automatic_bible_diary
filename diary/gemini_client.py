@@ -13,7 +13,7 @@ from common.bible_reference_parser import BibleReferenceParser
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3-flash-preview"
 
 
 class GeminiClient:

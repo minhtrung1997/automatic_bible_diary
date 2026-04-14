@@ -18,7 +18,8 @@ from diary.config import Config
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ def main():
         
         # Generate diary entry using Gemini
         gemini_client = GeminiClient(config.gemini_api_key)
+        logger.info(f"Using Gemini model: {gemini_client.model_name}")
         diary_entry = gemini_client.generate_diary_entry(bible_content)
         
         if not diary_entry:
