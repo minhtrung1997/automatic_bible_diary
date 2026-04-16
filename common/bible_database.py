@@ -57,6 +57,7 @@ class BibleDatabase:
     def get_book_number(self, book_name: str) -> Optional[int]:
         try:
             bn = book_name.strip()
+
             # Use shared book mappings
             mapped = BOOK_MAPPINGS.get(bn.lower())
             if mapped:
@@ -83,6 +84,71 @@ class BibleDatabase:
             logger.error(f"Error finding book number for '{book_name}': {e}")
             return None
 
+    def _get_verses_by_book_number(
+        self, book_number: int, chapter: int, verse_start: int, verse_end: int
+    ) -> List[sqlite3.Row]:
+        cur = self._connection.cursor()
+        cur.execute(
+            """
+            SELECT verse, text FROM verses
+            WHERE book_number = ? AND chapter = ? AND verse >= ? AND verse <= ?
+            ORDER BY verse
+            """,
+            (book_number, chapter, verse_start, verse_end),
+        )
+        return cur.fetchall()
+
+    def _john_alias_kind(self, book: str) -> Optional[str]:
+        b = (book or '').strip().lower()
+        if b in {'john', 'jn', 'joh', 'ga', 'gi'}:
+            return 'gospel'
+        if b in {'1 john', '1 jn', '1jn', '1jo', '1ga', '1gi'}:
+            return '1john'
+        if b in {'2 john', '2 jn', '2jn', '2jo', '2ga', '2gi'}:
+            return '2john'
+        if b in {'3 john', '3 jn', '3jn', '3jo', '3ga', '3gi'}:
+            return '3john'
+        return None
+
+    def _john_fallback_book_numbers(self, kind: str) -> List[int]:
+        cur = self._connection.cursor()
+        cur.execute("SELECT book_number, short_name, long_name FROM books ORDER BY book_number")
+        rows = cur.fetchall()
+
+        def is_same_family(short_name: str, long_name: str) -> bool:
+            s = (short_name or '').lower()
+            l = (long_name or '').lower()
+            if 'john' in l or 'ioan' in l:
+                return True
+            return s in {'ga', 'gi', '1ga', '2ga', '3ga', '1gi', '2gi', '3gi'}
+
+        def match_kind(short_name: str, long_name: str) -> bool:
+            s = (short_name or '').strip().lower()
+            l = (long_name or '').strip().lower()
+
+            starts_1 = s.startswith('1') or bool(re.match(r'^1\b|^i\b', l))
+            starts_2 = s.startswith('2') or bool(re.match(r'^2\b|^ii\b', l))
+            starts_3 = s.startswith('3') or bool(re.match(r'^3\b|^iii\b', l))
+
+            if kind == 'gospel':
+                return not starts_1 and not starts_2 and not starts_3
+            if kind == '1john':
+                return starts_1
+            if kind == '2john':
+                return starts_2
+            if kind == '3john':
+                return starts_3
+            return False
+
+        candidates: List[int] = []
+        for r in rows:
+            bn = int(r['book_number'])
+            sn = r['short_name'] or ''
+            ln = r['long_name'] or ''
+            if is_same_family(sn, ln) and match_kind(sn, ln):
+                candidates.append(bn)
+        return candidates
+
     def search_verse_by_reference(self, book: str, chapter: int, verse_start: int, verse_end: Optional[int] = None) -> Optional[str]:
         try:
             book_number = self.get_book_number(book)
@@ -90,16 +156,24 @@ class BibleDatabase:
                 logger.warning(f"Book not found: {book}")
                 return None
             end_verse = verse_end or verse_start
-            cur = self._connection.cursor()
-            cur.execute(
-                """
-                SELECT verse, text FROM verses 
-                WHERE book_number = ? AND chapter = ? AND verse >= ? AND verse <= ?
-                ORDER BY verse
-                """,
-                (book_number, chapter, verse_start, end_verse),
-            )
-            rows = cur.fetchall()
+            rows = self._get_verses_by_book_number(book_number, chapter, verse_start, end_verse)
+
+            if not rows:
+                kind = self._john_alias_kind(book)
+                if kind:
+                    for fallback_book_number in self._john_fallback_book_numbers(kind):
+                        if fallback_book_number == book_number:
+                            continue
+                        fallback_rows = self._get_verses_by_book_number(
+                            fallback_book_number, chapter, verse_start, end_verse
+                        )
+                        if fallback_rows:
+                            logger.info(
+                                f"Resolved {book} {chapter}:{verse_start}-{end_verse} "
+                                f"using fallback book_number={fallback_book_number}"
+                            )
+                            return " ".join(r[1] for r in fallback_rows if r[1])
+
             if not rows:
                 logger.warning(
                     f"No verses found for book_number={book_number}, chapter={chapter}, verses={verse_start}-{end_verse}"

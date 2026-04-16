@@ -60,6 +60,8 @@ BOOK_MAPPINGS = {
     'matthew': 'Mt', 'matt': 'Mt', 'mt': 'Mt',
     'mark': 'Mk', 'mk': 'Mk', 'mr': 'Mk',
     'luke': 'Lc', 'lk': 'Lc', 'lu': 'Lc',
+    # John-family books vary by DB schema; primary mapping stays on Ga-family,
+    # and BibleDatabase applies fallback resolution when verses are not found.
     'john': 'Ga', 'jn': 'Ga', 'joh': 'Ga',
     'acts': 'Cv', 'act': 'Cv', 'ac': 'Cv',
     

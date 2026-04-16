@@ -161,6 +161,20 @@ def test_abbreviated_book_names():
         assert ref['book'] == expected_book, f"For {reference}: expected '{expected_book}', got '{ref['book']}'"
 
 
+def test_john_gospel_range_lookup():
+    """Regression: ensure John 3:31-36 resolves to existing Gospel verses."""
+    parser = BibleReferenceParser()
+    refs = parser.extract_bible_references('John 3:31-36')
+    assert refs, "Failed to parse John 3:31-36"
+
+    with BibleDatabase() as db:
+        ref = refs[0]
+        verse_text = db.search_verse_by_reference(
+            ref['book'], ref['chapter'], ref['verse_start'], ref['verse_end']
+        )
+        assert verse_text, "Failed to find Gospel verses for John 3:31-36"
+
+
 if __name__ == '__main__':
     print("Testing nehemiah mapping (original issue)...")
     test_nehemiah_mapping()
